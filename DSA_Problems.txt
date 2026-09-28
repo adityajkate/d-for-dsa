@@ -1,0 +1,163 @@
+Basics - 
+1. Big O notation, Order of Growth, Analysis of Common loops
+
+Basics Programs - 
+1. Sum of natural numbers
+2. Count digits
+3. Palindrome Number
+4. Factorial of a number
+5. GCD or HCF of two numbers
+6. LCM of two numbers
+7. Check for prime
+8. Prime Factorization
+9. All divisors of a number
+10. Sieve of Eratosthenes
+11. Computing Power
+12. Iterative Power (Binary Exponentiation)
+
+Bitwise - 
+1. Check kth bit is set or not
+2. Count Set Bits
+3. Find the only Odd
+4. Power of 2
+5. One odd occurring
+6. Two odd occurring
+7. Power set using bitwise
+
+
+Recursion -
+1. Print 1 to N
+2. Print N to 1
+3. Tail Recursion
+4. Writing Base cases in Recursion
+5. Sum of Digits
+6. Palindrome check 
+7. Rope Cutting Problem
+8. Tower of Hanoi
+9. Josephus Problem
+10. Find all distinct subset (or subsequence) sums
+11. Print all permutations
+12. Restrictive candy crush
+
+List -
+1. Average or mean of a list
+2. Separate Even or Odd 
+3. Get smaller elements
+4. Largest element in list
+5. Second largest element in list
+6. check if list is sorted
+7. Reverse a list
+8. Remove duplicates
+9. Happiest Triplet
+10. Left Rotate a list by one
+11. Left Rotate a list by d places
+12. Maximum Subarray Sum
+13. Longest Even Odd Subarray
+14. Maximum Circular Sum Subarray
+15. Majority Element
+16. Min no of flips
+17. Sliding Window Technique
+18. Subarray with Given Sum
+19. Prefix Sum Technique
+20. Equilibrium Point
+21. Maximum Appearing Element in Ranges
+
+Searching - 
+1. Binary Search
+2. Recursive Binary Search
+3. Analaysis of Binary Search
+4. Index of First Occurrence in a sorted Array
+5. Index of Last Occurrence
+6. Count 1s in a Sorted Array
+7. Square Root
+8. Sorted Array Search
+9. Search in Rotated Array
+10. Find Kth Rotation
+11. Count Occurrence in a sorted array
+12. Two Pointers Approach
+13. Triplet in a sorted Array
+14. Median of Two Sorted Arrays
+15. Repeating Element
+16. Allocate Minimum pages (Naïve Method)
+17. Allocate Minimum pages (Binary Serach)
+
+Sorting -
+1. Bubble Sort
+2. Selection Sort
+3. Insertion Sort
+4. Merge Sort
+5. Merge Two Sorted Arrays
+6. Merge Sort 
+7. Union of Two sorted arrays
+8. Intersection of two sorted arrays
+9. Count Inversion in Arrays
+10. Partition a given array
+11. Hoare's Partition
+12. Quick Sort
+13. Quick Sort using Lomuto Partition
+14. Quick Sort using Hoare's Partition
+15. Heap Sort
+16. Kth Smallest
+17. Minimum difference in an Array
+18. Chocolate Distribution Problem
+19. Sort an array with two types of elements
+20. Sort an array with three types of elements
+21. Merge overlapping
+22. Meeting the maximum guests
+23. Counting Sort
+24. Cyclic Sort
+25. Radix Sort
+26. Bucket Sort
+
+Matrix - 
+1. ND Arrays
+2. Passing a 2D array as a argument
+3. Matrix in Snake Pattern
+4. Matrix Boundary Traversal
+5. Transpose of a matrix
+6. Row with max 1s
+7. Median of row wise sorted matrix
+8. Median in a row-wise sorted matrix
+
+Hashing -
+1. Direct Address Table
+2. Hashing Functions
+3. Collision Handling
+4. Chaining
+5. Open Address
+6. Double Hashing
+7. Frequencies in a limited Array
+8. Set in Python
+9. Sort an array with two types of elements
+10. Count Distinct elements in a list
+11. Intersection of two arrays
+12. Distinct Substrings
+13. Subarray with given sum
+14. Check for palindrome permutations
+15. Longest Subarray with given sum
+16. Longest Subarray with equal number of zero and one
+17. Longest Common Span with same sum in Binary array
+18. Count Distinct Element in every window
+19. More than nk Occurrence
+20. Count Subarray with k odds
+
+Strings - 
+1. Escape Sequences and Raw Strings
+2. Formatted Strings in Python
+3. String Comparisons
+4. Reverse a String
+5. Validate a IP address
+6. Check for Palindrome
+7. Check if a String is Subsequence of Other
+8. Check for Anagram
+9. Leftmost Repeating Character
+10. Reverse Words in a String
+11. Pattern Searching in a String
+12. Naïve Pattern Searching
+13. Naïve Pattern Searching for Distinct
+14. Rabin Karp
+15. KMP Algo
+16. Lexographic rank of a string
+17. Longest substring with distinct characters
+18. Multiply two strings
+19. String Subsequence
