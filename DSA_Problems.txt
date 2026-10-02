@@ -39,7 +39,7 @@ Recursion -
 11. Print all permutations
 12. Restrictive candy crush
 
-List -
+List (Arrays)-
 1. Average or mean of a list
 2. Separate Even or Odd 
 3. Get smaller elements
