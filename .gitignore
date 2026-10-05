@@ -1,0 +1,28 @@
+# Build/dev artifacts
+node_modules/
+package-lock.json
+package.json
+
+# Test and verification scratch
+.smoke.test.js
+.visual.test.js
+.gifshot.js
+.gifkey.js
+.visual.txt
+.gifprobe.txt
+.gifframes.json
+.probe.log
+.v.log
+.k.log
+.g.log
+dbg.txt
+debug.txt
+
+# Screenshots
+.shots/
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp

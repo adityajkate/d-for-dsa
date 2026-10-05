@@ -17,7 +17,7 @@ const CURRICULUM = [
     },
     {
         slug: 'basic-programs',
-        title: 'Basics Programs',
+        title: 'Basic Programs',
         blurb: 'The small warm-up set. Write each one without thinking twice.',
         problems: [
             'Sum of natural numbers',
