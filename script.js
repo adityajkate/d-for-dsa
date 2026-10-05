@@ -110,10 +110,10 @@
         const list = $('#rail-list');
         const dotRow = (c) =>
             c.problems
-                .map(
-                    (_, i) =>
-                        `<i class="matrix__dot" data-dot="${esc(c.slug)}:${i + 1}"></i>`
-                )
+                .map((name, i) => {
+                    const key = `${esc(c.slug)}:${i + 1}`;
+                    return `<i class="matrix__dot" data-dot="${key}" title="${esc(name)}"></i>`;
+                })
                 .join('');
 
         const chapters = CURRICULUM.map(
@@ -123,19 +123,25 @@
             <span class="chapter__name">${esc(c.title)}</span>
             <span class="chapter__count" data-count="${esc(c.slug)}">${String(c.problems.length).padStart(2, '0')}</span>
             <span class="matrix" data-matrix="${esc(c.slug)}" aria-hidden="true">${dotRow(c)}</span>
+            <span class="u-sr" data-sr="${esc(c.slug)}">${doneIn(c.slug)} of ${c.problems.length} solved</span>
           </button>
         </li>`
         ).join('');
 
         list.innerHTML = `
         <li>
-          <button class="chapter chapter--all" type="button" data-slug="${ALL}" aria-current="${currentSlug === ALL}">
+          <button class="chapter chapter--all" type="button" style="--i:0" data-slug="${ALL}" aria-current="${currentSlug === ALL}">
             <span class="chapter__name">All problems</span>
             <span class="chapter__count" data-count="${ALL}">${String(TOTAL).padStart(2, '0')}</span>
           </button>
         </li>
         <li class="rail__div" aria-hidden="true"></li>
         ${chapters}`;
+
+        // Stagger index for the drawer entrance animation.
+        list.querySelectorAll('.chapter').forEach((el, i) =>
+            el.style.setProperty('--i', i)
+        );
     }
 
     function syncRail() {
@@ -160,6 +166,10 @@
                 const dot = $(`[data-dot="${c.slug}:${i + 1}"]`);
                 if (dot) dot.dataset.done = String(isDone(c.slug, i + 1));
             });
+
+            // Keep the screen-reader progress string in step with the dots.
+            const sr = $(`[data-sr="${c.slug}"]`);
+            if (sr) sr.textContent = `${n} of ${c.problems.length} solved`;
         });
     }
 
@@ -212,23 +222,29 @@
         }
 
         // Header + counter
+        const solved = isAll ? done.size : doneIn(slug);
+        const size = isAll ? TOTAL : chapter.problems.length;
+
         if (isAll) {
             $('#chapter-title').textContent = 'All problems';
             $('#chapter-blurb').textContent =
                 'Every chapter, in the order they build on each other. Click any row to mark it solved.';
             document.title = 'D for DSA';
-            const pct = TOTAL ? Math.round((done.size / TOTAL) * 100) : 0;
-            $('#progress-fill').style.setProperty('--pct', `${pct}%`);
-            $('#progress-text').textContent = `${done.size}/${TOTAL}`;
         } else {
             $('#chapter-title').textContent = chapter.title;
             $('#chapter-blurb').textContent = chapter.blurb;
             document.title = `${chapter.title} · D for DSA`;
-            const n = doneIn(slug);
-            const pct = Math.round((n / chapter.problems.length) * 100);
-            $('#progress-fill').style.setProperty('--pct', `${pct}%`);
-            $('#progress-text').textContent = `${n}/${chapter.problems.length}`;
         }
+
+        $('#progress-fill').style.setProperty(
+            '--pct',
+            `${size ? Math.round((solved / size) * 100) : 0}%`
+        );
+        $('#progress-text').textContent = `${solved}/${size}`;
+        $('.progress').dataset.empty = String(solved === 0);
+        // "All problems" is not a chapter, so the scope label has to follow
+        // whichever view is actually showing.
+        $('#progress-label').textContent = isAll ? 'all problems' : 'this chapter';
 
         // Body
         const rows = $('#rows');
@@ -387,9 +403,27 @@
         renderHits();
     }
 
+    /**
+     * Scroll lock. Both overlays (drawer and palette) must go through one
+     * place, otherwise the last one to close releases the lock while the other
+     * is still open.
+     */
+    let scrollLocks = 0;
+
+    function lockScroll() {
+        scrollLocks++;
+        document.documentElement.style.overflow = 'hidden';
+    }
+
+    function releaseScroll() {
+        scrollLocks = Math.max(0, scrollLocks - 1);
+        if (scrollLocks === 0) document.documentElement.style.overflow = '';
+    }
+
     function openPalette() {
         $('#scrim').dataset.open = 'true';
-        document.body.style.overflow = 'hidden';
+        toggleRail(false);
+        lockScroll();
         const input = $('#palette-input');
         input.value = '';
         search();
@@ -397,8 +431,9 @@
     }
 
     function closePalette() {
+        if (!paletteOpen()) return;
         $('#scrim').dataset.open = 'false';
-        document.body.style.overflow = '';
+        releaseScroll();
     }
 
     const paletteOpen = () => $('#scrim').dataset.open === 'true';
@@ -422,9 +457,16 @@
 
     function toggleRail(force) {
         const rail = $('#rail');
-        const open = typeof force === 'boolean' ? force : rail.dataset.open !== 'true';
+        const wasOpen = rail.dataset.open === 'true';
+        const open = typeof force === 'boolean' ? force : !wasOpen;
+        if (open === wasOpen) return;
+
         rail.dataset.open = String(open);
+        $('#rail-scrim').dataset.open = String(open);
         $('#menu-toggle').setAttribute('aria-expanded', String(open));
+
+        if (open) lockScroll();
+        else releaseScroll();
     }
 
     /* ---------------------------------------------------------------------
@@ -471,6 +513,8 @@
 
         $('#menu-toggle').addEventListener('click', () => toggleRail());
 
+        $('#rail-scrim').addEventListener('click', () => toggleRail(false));
+
         $('#reset-progress').addEventListener('click', () => {
             done = new Set();
             save();
@@ -486,6 +530,18 @@
         });
 
         document.addEventListener('keydown', (e) => {
+            // Escape closes the mobile drawer, but never while the palette is
+            // up: the palette owns Escape in that case.
+            if (
+                e.key === 'Escape' &&
+                !paletteOpen() &&
+                $('#rail').dataset.open === 'true'
+            ) {
+                toggleRail(false);
+                $('#menu-toggle').focus();
+                return;
+            }
+
             // ⌘K / Ctrl+K / "/" opens search from anywhere.
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
                 e.preventDefault();
@@ -547,24 +603,95 @@
 
     /** Update the header counter without re-rendering the whole list. */
     function refreshRowProgress() {
-        if (currentSlug === ALL) {
-            const pct = TOTAL ? Math.round((done.size / TOTAL) * 100) : 0;
-            $('#progress-fill').style.setProperty('--pct', `${pct}%`);
-            $('#progress-text').textContent = `${done.size}/${TOTAL}`;
-        } else {
-            const chapter = CURRICULUM.find((c) => c.slug === currentSlug);
-            const n = doneIn(currentSlug);
-            const pct = Math.round((n / chapter.problems.length) * 100);
-            $('#progress-fill').style.setProperty('--pct', `${pct}%`);
-            $('#progress-text').textContent = `${n}/${chapter.problems.length}`;
-        }
+        const chapter =
+            currentSlug === ALL ? null : CURRICULUM.find((c) => c.slug === currentSlug);
+        const n = currentSlug === ALL ? done.size : doneIn(currentSlug);
+        const total = chapter ? chapter.problems.length : TOTAL;
+
+        $('#progress-fill').style.setProperty(
+            '--pct',
+            `${total ? Math.round((n / total) * 100) : 0}%`
+        );
+        $('#progress-text').textContent = `${n}/${total}`;
+        $('.progress').dataset.empty = String(n === 0);
+
         buildStrip();
         syncRail();
     }
 
     /* ---------------------------------------------------------------------
-       Reveal on scroll
+       Platform-correct keyboard shortcut hints
        --------------------------------------------------------------------- */
+
+    const isApple = /Mac|iPhone|iPad|iPod/i.test(
+        navigator.platform || navigator.userAgent
+    );
+
+    function initShortcuts() {
+        // Markup ships "Ctrl K" so Windows/Linux users never see a wrong hint.
+        // Swap to the Apple symbol only where it applies.
+        if (!isApple) return;
+        document.querySelectorAll('[data-shortcut]').forEach((el) => {
+            el.textContent = '⌘K';
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+       Navbar: condense on scroll, plus a scroll-progress hairline
+       --------------------------------------------------------------------- */
+
+
+    function initNavbar() {
+        const root = document.documentElement;
+        const bar = $('.topbar');
+
+        // Target condense state. Hysteresis band: 72px down to condense,
+        // back up only past 24px. Without a band, a user resting near the
+        // threshold flips the state every frame and the bar visibly shakes.
+        let condensed = false;
+
+        // Eased follower. The bar glides to its target instead of snapping,
+        // and because the value is written to a custom property that only
+        // drives height and colour, it never forces a layout read per frame.
+        let current = 0;
+        let target = 0;
+        let raf = 0;
+
+        const tick = () => {
+            current += (target - current) * 0.18;
+            if (Math.abs(target - current) < 0.002) current = target;
+            root.style.setProperty('--condense', current.toFixed(4));
+
+            if (current !== target) {
+                raf = requestAnimationFrame(tick);
+            } else {
+                raf = 0;
+                bar.dataset.scrolled = String(condensed);
+            }
+        };
+
+        const schedule = () => {
+            if (!raf) raf = requestAnimationFrame(tick);
+        };
+
+        const update = () => {
+            const y = window.scrollY;
+
+            const wantCondensed = condensed ? y > 24 : y > 72;
+            if (wantCondensed !== condensed) {
+                condensed = wantCondensed;
+                target = condensed ? 1 : 0;
+                schedule();
+            }
+
+            const max = root.scrollHeight - window.innerHeight;
+            root.style.setProperty('--scroll', (max > 0 ? Math.min(y / max, 1) : 0).toFixed(4));
+        };
+
+        window.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update, { passive: true });
+        update();
+    }
 
     function initReveal() {
         const targets = document.querySelectorAll('[data-reveal]');
@@ -606,6 +733,8 @@
         syncBand();
         bind();
         initReveal();
+        initNavbar();
+        initShortcuts();
 
         window.addEventListener('hashchange', () => {
             const slug = location.hash.slice(1) || ALL;

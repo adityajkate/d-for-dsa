@@ -51,6 +51,13 @@ img {
 [data-theme='ink'] {
     color-scheme: dark;
 
+    /* Single source of truth for the header's height. Every sticky element
+       below reads this instead of hardcoding an offset, so the header can
+       animate its height without anything below it jumping. */
+    --bar-h: 4rem;
+    --condense: 0;
+    --scroll: 0;
+
     --bg: #0b0b0a;
     --bg-raise: #121211;
     --bg-sink: #080807;
@@ -71,6 +78,10 @@ img {
 
 [data-theme='paper'] {
     color-scheme: light;
+
+    --bar-h: 4rem;
+    --condense: 0;
+    --scroll: 0;
 
     --bg: #f4f1ea;
     --bg-raise: #faf8f3;
@@ -202,8 +213,32 @@ body::before {
     }
 }
 
+/* The logo tile. Shared so the mark is defined exactly once. */
+.logo-mark {
+    display: grid;
+    place-items: center;
+    border-radius: 0.35rem;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-weight: 900;
+    font-size: 0.875rem;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 /* ==========================================================================
    Top bar
+
+   The bar's height is published as --bar-h and consumed by every element that
+   sticks below it. Nothing is allowed to hardcode a bar height, because a
+   stale offset makes sticky elements jump as the bar animates. That was the
+   original shivering bug.
+
+   --condense is 0 (expanded) to 1 (condensed), set by script.js with
+   hysteresis so it cannot oscillate at the threshold.
    ========================================================================== */
 
 .topbar {
@@ -213,11 +248,52 @@ body::before {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding-block: 0.875rem;
-    background: color-mix(in oklab, var(--bg) 82%, transparent);
-    backdrop-filter: blur(14px) saturate(1.4);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-    border-bottom: 1px solid var(--rule);
+    /* Height, not padding-block: animating padding reflows the flex row every
+       frame and makes the whole bar jitter. Height composes instead. */
+    height: calc(var(--bar-h) - (0.5rem * var(--condense)));
+    padding-block: 0;
+    background: color-mix(
+        in oklab,
+        var(--bg) calc(78% + 14% * var(--condense)),
+        transparent
+    );
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    border-bottom: 1px solid
+        color-mix(in oklab, var(--rule) 100%, var(--rule-strong) var(--condense));
+    transition:
+        height 320ms cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 320ms ease,
+        border-color 320ms ease;
+}
+
+/* Scroll progress hairline along the bottom edge of the bar.
+   It reads as absent at the top of the page because scaleX is 0 there, which
+   looked like a state bug. A permanent 1px rule plus the 2px accent fill on
+   top of it makes the bar edge consistent at rest and still show progress. */
+.topbar::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.18;
+}
+
+.topbar::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(var(--scroll));
+    transform-origin: left center;
+    /* No transition: the hairline must track the scrollbar exactly, and a
+       transition would lag behind and read as wobble. */
 }
 
 .topbar__inner {
@@ -238,18 +314,8 @@ body::before {
 }
 
 .topbar__glyph {
-    display: grid;
-    place-items: center;
     width: 1.5rem;
     height: 1.5rem;
-    border-radius: 0.35rem;
-    background: var(--accent);
-    color: var(--accent-ink);
-    font-family: 'Cabinet Grotesk', sans-serif;
-    font-weight: 900;
-    font-size: 0.875rem;
-    line-height: 1;
-    letter-spacing: -0.04em;
     transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -302,25 +368,29 @@ body::before {
 }
 
 /* Search trigger doubles as the real input on desktop, a button on mobile. */
+/* Search field and theme toggle share one control family: same height,
+   radius, border and hover treatment. Only the width differs. */
 .searchbar {
     display: flex;
     align-items: center;
     gap: 0.55rem;
     min-width: 0;
     width: clamp(11rem, 26vw, 20rem);
-    padding: 0.4rem 0.5rem 0.4rem 0.7rem;
+    height: 2.25rem;
+    padding: 0 0.5rem 0 0.7rem;
     border: 1px solid var(--rule);
     border-radius: 0.5rem;
     background: var(--bg-raise);
     color: var(--ink-dim);
     text-align: left;
-    transition: border-color 200ms ease, background-color 200ms ease;
+    transition: border-color 200ms ease, background-color 200ms ease,
+        color 200ms ease;
 }
 
 .searchbar:hover,
 .searchbar:focus-visible {
     border-color: var(--rule-strong);
-    background: var(--bg-raise);
+    color: var(--ink);
 }
 
 .searchbar__text {
@@ -378,6 +448,37 @@ kbd {
     background: var(--bg-raise);
 }
 
+/* Hamburger becomes a cross while the drawer is open. */
+.icon-btn svg {
+    transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.icon-btn svg path {
+    transition: d 260ms ease;
+}
+
+.topbar__menu[aria-expanded='true'] svg {
+    transform: rotate(90deg);
+}
+
+/* The theme icon rotates on toggle. */
+#theme-toggle svg {
+    transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#theme-toggle:hover svg {
+    transform: rotate(28deg) scale(1.08);
+}
+
+/* Search icon nudges on hover, and the field lifts. */
+.searchbar:hover .searchbar__icon {
+    transform: scale(1.12);
+}
+
+.searchbar__icon {
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .topbar__menu {
     display: none;
 }
@@ -402,16 +503,22 @@ kbd {
 
 .rail {
     position: sticky;
-    top: 4rem;
+    top: calc(var(--bar-h) - (0.5rem * var(--condense)));
     align-self: start;
-    height: calc(100dvh - 5rem);
+    height: calc(100dvh - var(--bar-h) + (0.5rem * var(--condense)));
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    padding-block: clamp(2rem, 4vh, 3rem) 2rem;
+    gap: 1.25rem;
+    padding-block: clamp(1.5rem, 3vh, 2.25rem) 1.75rem;
+    /* Still scrollable on short viewports, but without a second scrollbar:
+       the page has its own, and two of them read as a bug. */
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar {
+    display: none;
 }
 
 .rail__head {
@@ -430,7 +537,10 @@ kbd {
 }
 
 .rail__total {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     color: var(--ink-faint);
 }
 
@@ -465,6 +575,21 @@ kbd {
     text-align: left;
     color: var(--ink-dim);
     transition: color 180ms ease, background-color 180ms ease;
+    /* The visually-hidden progress string is a grid child. Pull it out
+       entirely so it cannot take a cell or a gap row. */
+    position: relative;
+}
+
+.chapter > .u-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }
 
 .chapter:hover {
@@ -508,13 +633,17 @@ kbd {
     height: 4px;
 }
 
+/* One square per problem, filled when solved. Kept at the same subdued value
+   as an empty track: the dots are a quantity read-out, and the solved state is
+   carried by the accent fill rather than by an extra outline. */
 .matrix__dot {
     width: 4px;
     height: 4px;
     flex: none;
     border-radius: 1px;
-    background: var(--rule-strong);
+    background: var(--rule);
     transition: background-color 260ms ease, transform 260ms ease;
+    cursor: help;
 }
 
 .matrix__dot[data-done='true'] {
@@ -526,14 +655,16 @@ kbd {
 }
 
 .chapter:hover .matrix__dot:not([data-done='true']) {
-    background: var(--ink-faint);
+    background: var(--rule-strong);
 }
 
 /* Rail footer */
 
 .rail__foot {
     margin-top: auto;
-    padding-top: 1.5rem;
+    /* Top rule plus real breathing room at the bottom. The old 1.5rem
+       padding left the footer sitting right on the viewport edge. */
+    padding-block: 1.5rem 2rem;
     border-top: 1px solid var(--rule);
     display: flex;
     align-items: center;
@@ -614,14 +745,41 @@ kbd {
 }
 
 .rail__foot-v {
-    font-size: 0.8125rem;
-    color: var(--ink-dim);
+    /* Was --ink-dim at 0.8125rem, which all but vanished against --bg.
+       One step brighter and a touch larger keeps it clearly subordinate
+       rather than invisible. */
+    font-size: 0.875rem;
+    color: var(--ink);
 }
 
 @media (max-width: 60rem) {
+    /* Backdrop. Without it the problem list stays fully visible behind the
+       drawer, which is what made the drawer feel like it was not there. */
+    .rail-scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 34;
+        background: color-mix(in oklab, var(--bg-sink) 82%, transparent);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 340ms ease, visibility 0s linear 340ms;
+    }
+
+    .rail-scrim[data-open='true'] {
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 340ms ease, visibility 0s;
+    }
+
     .rail {
         position: fixed;
-        inset: 3.75rem 0 0 0;
+        /* Tracks the live bar height for the same reason .toolbar does. */
+        top: calc(var(--bar-h) - (0.5rem * var(--condense)));
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 35;
         height: auto;
         padding: 1.5rem clamp(1.25rem, 4vw, 3.5rem) 3rem;
@@ -629,15 +787,37 @@ kbd {
         border-top: 1px solid var(--rule);
         transform: translateY(101%);
         visibility: hidden;
-        transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
-            visibility 0s linear 380ms;
+        transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
+            visibility 0s linear 420ms;
     }
 
     .rail[data-open='true'] {
         transform: translateY(0);
         visibility: visible;
-        transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+        transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
             visibility 0s;
+    }
+
+    /* Stagger the chapter rows in behind the panel. */
+    .rail[data-open='true'] .chapter {
+        animation: railIn 460ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        animation-delay: calc(var(--i, 0) * 34ms);
+    }
+
+    .rail__div {
+        animation: none;
+    }
+}
+
+@keyframes railIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
     }
 }
 
@@ -744,7 +924,13 @@ kbd {
 }
 
 .band__key {
-    font-size: 0.75rem;
+    /* Uppercase with tracking, matching .rail__label and .rail__foot-k, so
+       every small label on the page shares one voice. The previous lowercase
+       sentence case made the stat band read as body copy, not as a system. */
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     color: var(--ink-dim);
 }
 
@@ -752,7 +938,10 @@ kbd {
 
 .toolbar {
     position: sticky;
-    top: 3.75rem;
+    /* Must track the bar's LIVE height, not its resting height: the bar
+       animates, so a static offset would leave a gap that opens and closes
+       as the user scrolls. */
+    top: calc(var(--bar-h) - (0.5rem * var(--condense)));
     z-index: 30;
     display: flex;
     align-items: flex-end;
@@ -760,9 +949,10 @@ kbd {
     gap: 1.5rem;
     flex-wrap: wrap;
     padding-block: clamp(1rem, 2.5vh, 1.5rem);
-    background: color-mix(in oklab, var(--bg) 86%, transparent);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    /* Opaque, not translucent. This bar is sticky directly beneath the top
+       bar, which has already blurred everything behind it; a second blur here
+       would only cost a full-width re-rasterization on every scroll frame. */
+    background: var(--bg);
     border-bottom: 1px solid var(--rule);
 }
 
@@ -793,12 +983,29 @@ kbd {
     color: var(--ink-dim);
 }
 
+/* The topbar shows a global count, the toolbar a per-chapter one. Labelling
+   the toolbar removes the "why are there two counters" question. */
+.progress__label {
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+}
+
+@media (max-width: 34rem) {
+    .progress__label {
+        display: none;
+    }
+}
+
 .progress__track {
     position: relative;
     width: clamp(5rem, 12vw, 9rem);
-    height: 3px;
+    /* Was 3px of --rule-strong, which at 0% is indistinguishable from a
+       stray horizontal rule. A defined inset track reads as a component. */
+    height: 6px;
     border-radius: 99px;
-    background: var(--rule-strong);
+    background: var(--rule);
+    box-shadow: inset 0 0 0 1px var(--rule-strong);
     overflow: hidden;
 }
 
@@ -806,9 +1013,30 @@ kbd {
     position: absolute;
     inset: 0 auto 0 0;
     width: var(--pct, 0%);
+    min-width: 0;
     background: var(--accent);
     border-radius: 99px;
     transition: width 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* At zero there is no fill at all, so the track reads as empty space. Give
+   the component a visible floor without inventing progress. */
+.progress__track::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 99px;
+    background: repeating-linear-gradient(
+        90deg,
+        var(--rule-strong) 0 3px,
+        transparent 3px 6px
+    );
+    opacity: 0;
+    transition: opacity 200ms ease;
+}
+
+.progress[data-empty='true'] .progress__track::after {
+    opacity: 1;
 }
 
 .btn {
@@ -848,12 +1076,11 @@ kbd {
 /* Group headings, used only in the all-problems view. */
 .group__head {
     position: sticky;
-    top: 8.5rem;
+    top: calc(var(--bar-h) + 4.75rem);
     z-index: 20;
     padding-block: 0.75rem;
-    background: color-mix(in oklab, var(--bg) 92%, transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    /* Opaque for the same reason as .toolbar: no third stacked blur. */
+    background: var(--bg);
     border-bottom: 1px solid var(--rule);
     margin-bottom: 0.25rem;
 }
@@ -888,9 +1115,11 @@ kbd {
 
 .row {
     display: grid;
-    grid-template-columns: 2.75rem minmax(0, 1fr) 1.5rem;
+    /* Tighter number column. It only has to hold two digits plus a little
+       air, and the old 2.75rem read as a gap rather than a gutter. */
+    grid-template-columns: 2.25rem minmax(0, 1fr) 1.5rem;
     align-items: center;
-    gap: clamp(0.75rem, 2vw, 1.5rem);
+    gap: 0.75rem;
     width: 100%;
     padding-block: clamp(0.8rem, 1.6vw, 1.05rem);
     border-bottom: 1px solid var(--rule);
@@ -908,6 +1137,9 @@ kbd {
     font-size: 0.8125rem;
     color: var(--ink-faint);
     letter-spacing: 0.04em;
+    /* Right-aligned so the digits form a clean column against the titles. */
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .row__name {
@@ -928,17 +1160,35 @@ kbd {
     place-items: center;
     width: 1.25rem;
     height: 1.25rem;
-    border: 1px solid var(--rule-strong);
+    /* Needs to read as an affordance without shouting: --ink-faint is the
+       first step up from --rule-strong, which was too faint to notice. */
+    border: 1.5px solid var(--ink-faint);
     border-radius: 0.3rem;
     color: transparent;
     transition: background-color 220ms ease, border-color 220ms ease,
-        color 220ms ease;
+        color 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Hover on the row lifts the box, so the target is obvious before the click. */
+.row:hover .row__mark {
+    border-color: var(--ink-dim);
+    transform: scale(1.08);
+}
+
+.row__mark svg {
+    width: 0.7rem;
+    height: 0.7rem;
 }
 
 .row[data-done='true'] .row__mark {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--accent-ink);
+}
+
+.row[data-done='true']:hover .row__mark {
+    border-color: var(--accent-press);
+    transform: scale(1.08);
 }
 
 .row[data-done='true'] .row__name {
@@ -964,12 +1214,6 @@ mark {
     padding-block: clamp(3rem, 10vh, 6rem);
     color: var(--ink-dim);
     font-size: 0.9375rem;
-}
-
-@media (max-width: 40rem) {
-    .row {
-        grid-template-columns: 2.25rem minmax(0, 1fr) 1.5rem;
-    }
 }
 
 /* --- Chapter jump strip (Horizontal Accordion) --------------------------- */
@@ -1024,46 +1268,29 @@ mark {
     grid-template-columns: minmax(0, 1fr);
     align-items: center;
     gap: 0.5rem;
-    padding: 1rem 1.15rem;
+    padding: 0.85rem 1.15rem;
     background: var(--bg);
     text-align: left;
     overflow: hidden;
-    transition: background-color 260ms ease;
+    transition: background-color 220ms ease;
 }
 
-.slice::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left center;
-    transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
-    z-index: 0;
-}
-
-.slice:hover::after,
-.slice:focus-visible::after {
-    transform: scaleX(1);
-}
-
-.slice > * {
-    position: relative;
-    z-index: 1;
-    transition: color 260ms ease;
-}
-
+/* A full accent wipe was far too loud for a page this restrained: the hover
+   read like a selected navigation tab rather than a chapter card. A faint
+   accent wash keeps the same affordance at the right volume. */
 .slice:hover,
 .slice:focus-visible {
-    color: var(--accent-ink);
+    background: var(--accent-wash);
+}
+
+.slice:hover .slice__name,
+.slice:focus-visible .slice__name {
+    color: var(--accent);
 }
 
 .slice:hover .slice__count,
-.slice:hover .slice__bar,
-.slice:focus-visible .slice__count,
-.slice:focus-visible .slice__bar {
-    color: var(--accent-ink);
-    background: var(--accent-ink);
+.slice:focus-visible .slice__count {
+    color: var(--accent);
 }
 
 .slice__top {
@@ -1100,8 +1327,15 @@ mark {
     transition: width 620ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.slice:hover .slice__bar > i {
-    background: var(--accent-ink);
+.slice:hover .slice__bar {
+    background: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+/* The focus ring on a full-bleed grid cell reads as a stray white box, so
+   replace it with an inset ring that hugs the card. */
+.slice:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -3px;
 }
 
 /* --- Footer -------------------------------------------------------------- */
@@ -1125,6 +1359,13 @@ mark {
 
 .foot__keys {
     display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Each hint is one unit: keys together, then the verb. */
+.foot__keys > span {
+    display: inline-flex;
     align-items: center;
     gap: 0.4rem;
 }
