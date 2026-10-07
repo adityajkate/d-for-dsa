@@ -1,7 +1,7 @@
 # D for DSA
 
 A structured repository of essential Data Structures and Algorithms problems.
-143 problems across ten chapters, sequenced so each one only asks for what the
+Many problems across ten chapters, sequenced so each one only asks for what the
 last one taught you.
 
 ## What it does
